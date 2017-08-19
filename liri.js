@@ -133,24 +133,43 @@ function printAvailableCommands(){
     myLog("");
     myLog("AVAILABLE COMMANDS ARE:");
     for(command in commands){
-        myLog(command);
+        myLog(command + " [option]");
     }
 }
 
-function runApp(args){
+function runApp(){
     myLog("");
-    if(args.length > 4){
-        myLog("Too many command-line arguments");
-        printAvailableCommands();
-    } else if(args.length > 2){
-        var command = args[2]
+    var readPromise = fs.readFile("package.json", "utf8", function(err, data){
+        if(err){
+            myLog("Error getting app version:");
+            myLog(err); 
+            myLog("");
+            executeCommand(process.argv); 
+        } else {
+            myLog("APP VERSION: " + JSON.parse(data).version);
+            myLog("");
+            executeCommand(process.argv);
+        }
+    });
+}
+
+function executeCommand(args){
+    if(args.length > 2){
+        var command = args[2];
         var option = "";
         if(args.length > 3){
-            option = args[3];
+            for(var i = 3; i < args.length; i++){
+                if(i < (args.length-1)){
+                    option = option + args[i] + " ";
+                } else {
+                    option = option + args[i];
+                }
+            }
         }
         if(commands.hasOwnProperty(command)){
             commands[command](option);
         } else {
+            myLog("INVALID COMMAND: " + command);
             printAvailableCommands();
         }
     } else {
@@ -159,4 +178,4 @@ function runApp(args){
     }
 }
 
-runApp(process.argv);
+runApp();
