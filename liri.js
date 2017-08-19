@@ -2,19 +2,20 @@
 var keysFile = require("./keys.js");
 var fs = require("fs");
 var Twitter = require('twitter');
+var Spotify = require('node-spotify-api');
 
 //default variables
 var defaultSpotify = {
-    song: "The Sign",
+    track: "The Sign",
     artist: "Ace of Base",
 };
 var defaultMovie = {
     title: "Mr. Nobody",
     year: "2009",
-}
+};
 var defaultInstructionsFile = {
     name: "random.txt",
-}
+};
 
 //logger
 function myLog(message){
@@ -36,6 +37,59 @@ function getTweets(){
             for(var i = 0; i < statuses.length; i++){
                 myLog("Text: " + statuses[i].text);
                 myLog("Created At: " + statuses[i].created_at);
+                myLog("");
+            }
+        }
+    });
+}
+
+function buildSpotifySearchObj(myType, myQuery, myLimit){
+    var myObj = new Object();
+    myObj.type = myType;
+    myObj.query = myQuery;
+    myObj.limit = myLimit;
+    return myObj;
+}
+
+function convertToSpotifyQuery(spotifySearchObj){
+    var q = "";
+    var keys = Object.keys(spotifySearchObj);
+    for(var i = 0; i < keys.length; i++){
+        if(i < (keys.length - 1)){
+            q = q + keys[i] + ":" + spotifySearchObj[keys[i]] + " ";
+        } else {
+            q = q + keys[i] + ":" + spotifySearchObj[keys[i]];
+        }
+    }
+    q = encodeURI(q);
+    return q;
+}
+
+function spotifySong(searchObj){
+    var spotify = new Spotify(keysFile.spotifyKeys);
+    spotify.search(searchObj, function(error, data) {
+        if (error) {
+            myLog(error);
+        } else {
+            var tracks = data.tracks;
+            var items = tracks.items;
+            var artists;
+            var artistsStr
+            for(var i = 0; i < items.length; i++){
+                myLog("Track: " + items[i].name);
+                artistsStr = "Artists: ";
+                artists = items[i].artists;
+                for(var j = 0; j < artists.length; j++){
+                    if(j < (artists.length-1)){
+                        artistsStr = artistsStr + artists[j].name + ", ";
+                    } else {
+                        artistsStr = artistsStr + artists[j].name;
+                    }
+                }
+                myLog(artistsStr);
+                myLog("Album: " + items[i].album.name);
+                myLog("Preview URL: " + items[i].preview_url);
+                myLog("");
             }
         }
     });
@@ -45,13 +99,18 @@ function getTweets(){
 var commands = {
     "my-tweets" : function(option){
         myLog("Recent Tweets:");
+        myLog("");
         getTweets();
     },
     "spotify-this-song" : function(option){
         if(option){
             myLog("Spotify This Song: " + option);
+            myLog("");
+            spotifySong(buildSpotifySearchObj("track", convertToSpotifyQuery({track: option}), 10));
         } else {
-            myLog("Spotify This Song: " + defaultSpotify.song);
+            myLog("Spotify This Song: " + defaultSpotify.track);
+            myLog("");
+            spotifySong(buildSpotifySearchObj("track", convertToSpotifyQuery(defaultSpotify), 1));
         }
     },
     "movie-this" : function(option){
