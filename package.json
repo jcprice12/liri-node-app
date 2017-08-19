@@ -1,0 +1,29 @@
+{
+  "name": "liri-node-app",
+  "version": "1.0.0",
+  "description": "command-line helper for various things",
+  "main": "liri.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jcprice12/liri-node-app.git"
+  },
+  "keywords": [
+    "node",
+    "command-line",
+    "api"
+  ],
+  "author": "John Price",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jcprice12/liri-node-app/issues"
+  },
+  "homepage": "https://github.com/jcprice12/liri-node-app#readme",
+  "dependencies": {
+    "node-spotify-api": "^1.0.7",
+    "request": "^2.81.0",
+    "twitter": "^1.7.1"
+  }
+}
