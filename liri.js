@@ -3,6 +3,7 @@ var keysFile = require("./keys.js");
 var fs = require("fs");
 var Twitter = require('twitter');
 var Spotify = require('node-spotify-api');
+var request = require("request");
 
 //default variables
 var defaultSpotify = {
@@ -10,8 +11,8 @@ var defaultSpotify = {
     artist: "Ace of Base",
 };
 var defaultMovie = {
-    title: "Mr. Nobody",
-    year: "2009",
+    t: "Mr. Nobody",
+    y: "2009",
 };
 var defaultInstructionsFile = {
     name: "random.txt",
@@ -51,14 +52,14 @@ function buildSpotifySearchObj(myType, myQuery, myLimit){
     return myObj;
 }
 
-function convertToSpotifyQuery(spotifySearchObj){
+function convertToQuery(searchObj, d1, d2){
     var q = "";
-    var keys = Object.keys(spotifySearchObj);
+    var keys = Object.keys(searchObj);
     for(var i = 0; i < keys.length; i++){
         if(i < (keys.length - 1)){
-            q = q + keys[i] + ":" + spotifySearchObj[keys[i]] + " ";
+            q = q + keys[i] + d1 + searchObj[keys[i]] + d2;
         } else {
-            q = q + keys[i] + ":" + spotifySearchObj[keys[i]];
+            q = q + keys[i] + d1 + searchObj[keys[i]];
         }
     }
     q = encodeURI(q);
@@ -95,6 +96,34 @@ function spotifySong(searchObj){
     });
 }
 
+function getMovieData(queryPart){   
+    var queryUrl = "http://www.omdbapi.com/?" + queryPart + "&plot=short&apikey=40e9cece";
+    request(queryUrl, function(err, response, body){
+        if(!err && response.statusCode === 200){
+            var jsonObj = JSON.parse(body);
+            myLog("Title: " + jsonObj.Title);
+            myLog("Year: " + jsonObj.Year);
+            myLog("IMDB Rating: " + jsonObj.imdbRating);
+            for(var i = 0; i < jsonObj.Ratings.length; i++){
+                var source = jsonObj.Ratings[i].Source.toLowerCase().trim();
+                if(source === "rotten tomatoes"){
+                    myLog("Rotten Tomatoes Rating: " + jsonObj.Ratings[i].Value);
+                    break;
+                }
+            }
+            myLog("Country: " + jsonObj.Country);
+            myLog("Language: " + jsonObj.Language);
+            myLog("Plot: " + jsonObj.Plot);
+            myLog("Actors: " + jsonObj.Actors);
+            myLog("");
+        } else if(err){
+            myLog(err);
+        } else {
+            myLog("Error getting movies data, response.statusCode was: " + response.statusCode);
+        }
+    });
+}
+
 //object of available commands
 var commands = {
     "my-tweets" : function(option){
@@ -106,18 +135,22 @@ var commands = {
         if(option){
             myLog("Spotify This Song: " + option);
             myLog("");
-            spotifySong(buildSpotifySearchObj("track", convertToSpotifyQuery({track: option}), 10));
+            spotifySong(buildSpotifySearchObj("track", convertToQuery({track: option}, ":", " "), 10));
         } else {
             myLog("Spotify This Song: " + defaultSpotify.track);
             myLog("");
-            spotifySong(buildSpotifySearchObj("track", convertToSpotifyQuery(defaultSpotify), 1));
+            spotifySong(buildSpotifySearchObj("track", convertToQuery(defaultSpotify, ":", " "), 1));
         }
     },
     "movie-this" : function(option){
         if(option){
             myLog("Movie This: " + option);
+            myLog("");
+            getMovieData(convertToQuery({t: option}, "=", "&"));
         } else {
-            myLog("Movie This: " + defaultMovie.title);
+            myLog("Movie This: " + defaultMovie.t);
+            myLog("");
+            getMovieData(convertToQuery(defaultMovie, "=", "&"));
         }
     },
     "do-what-it-says" : function(option){
@@ -135,22 +168,6 @@ function printAvailableCommands(){
     for(command in commands){
         myLog(command + " [option]");
     }
-}
-
-function runApp(){
-    myLog("");
-    var readPromise = fs.readFile("package.json", "utf8", function(err, data){
-        if(err){
-            myLog("Error getting app version:");
-            myLog(err); 
-            myLog("");
-            executeCommand(process.argv); 
-        } else {
-            myLog("APP VERSION: " + JSON.parse(data).version);
-            myLog("");
-            executeCommand(process.argv);
-        }
-    });
 }
 
 function executeCommand(args){
@@ -176,6 +193,22 @@ function executeCommand(args){
         myLog("Not enough command-line arguments");
         printAvailableCommands();
     }
+}
+
+function runApp(){
+    myLog("");
+    var readPromise = fs.readFile("package.json", "utf8", function(err, data){
+        if(err){
+            myLog("Error getting app version:");
+            myLog(err); 
+            myLog("");
+            executeCommand(process.argv); 
+        } else {
+            myLog("APP VERSION: " + JSON.parse(data).version);
+            myLog("");
+            executeCommand(process.argv);
+        }
+    });
 }
 
 runApp();
