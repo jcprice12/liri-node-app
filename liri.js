@@ -26,12 +26,8 @@ var logFile = "log.txt";
 function myLog(message){
     console.log(message);
     var myDate = new Date();
-    message = myDate.toDateString() + " " + myDate.toTimeString() + ": " + message;
-    fs.appendFile(logFile, message + endOfLine, function(err){
-        if(err){
-            console.log("Error writing ro log file " + err);
-        }
-    });
+    message = myDate.toDateString() + " " + myDate.toTimeString() + ": " + message + endOfLine;
+    fs.appendFileSync(logFile, message);
 }
 
 function getTweets(){
@@ -220,6 +216,7 @@ function executeCommand(args){
 
 function runApp(){
     myLog("");
+    myLog("APP STARTED");
     var readPromise = fs.readFile("package.json", "utf8", function(err, data){
         if(err){
             myLog("Error getting app version:");
@@ -231,6 +228,7 @@ function runApp(){
             myLog("");
             executeCommand(process.argv);
         }
+        
     });
 }
 
