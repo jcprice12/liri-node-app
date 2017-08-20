@@ -4,6 +4,7 @@ var fs = require("fs");
 var Twitter = require('twitter');
 var Spotify = require('node-spotify-api');
 var request = require("request");
+var endOfLine = require('os').EOL;
 
 //default variables
 var defaultSpotify = {
@@ -18,9 +19,19 @@ var defaultInstructionsFile = {
     name: "random.txt",
 };
 
+//misc variables
+var logFile = "log.txt";
+
 //logger
 function myLog(message){
     console.log(message);
+    var myDate = new Date();
+    message = myDate.toDateString() + "\t" + message;
+    fs.appendFile(logFile, message + endOfLine, function(err){
+        if(err){
+            console.log("Error writing ro log file " + err);
+        }
+    });
 }
 
 function getTweets(){
@@ -126,47 +137,59 @@ function getMovieData(queryPart){
 
 //object of available commands
 var commands = {
-    "my-tweets" : function(option){
-        myLog("Recent Tweets:");
-        myLog("");
-        getTweets();
-    },
-    "spotify-this-song" : function(option){
-        if(option){
-            myLog("Spotify This Song: " + option);
+    "my-tweets" : {
+        optionDesc : "NO OPTION",
+        execute: function(option){
+            myLog("Recent Tweets:");
             myLog("");
-            spotifySong(buildSpotifySearchObj("track", convertToQuery({track: option}, ":", " "), 10));
-        } else {
-            myLog("Spotify This Song: " + defaultSpotify.track);
-            myLog("");
-            spotifySong(buildSpotifySearchObj("track", convertToQuery(defaultSpotify, ":", " "), 1));
+            getTweets();
         }
     },
-    "movie-this" : function(option){
-        if(option){
-            myLog("Movie This: " + option);
-            myLog("");
-            getMovieData(convertToQuery({t: option}, "=", "&"));
-        } else {
-            myLog("Movie This: " + defaultMovie.t);
-            myLog("");
-            getMovieData(convertToQuery(defaultMovie, "=", "&"));
+    "spotify-this-song" : {
+        optionDesc : "TRACK NAME",
+        execute: function(option){
+            if(option){
+                myLog("Spotify This Song: " + option);
+                myLog("");
+                spotifySong(buildSpotifySearchObj("track", convertToQuery({track: option}, ":", " "), 10));
+            } else {
+                myLog("Spotify This Song: " + defaultSpotify.track);
+                myLog("");
+                spotifySong(buildSpotifySearchObj("track", convertToQuery(defaultSpotify, ":", " "), 1));
+            }
+        },
+    },
+    "movie-this" : {
+        optionDesc: "MOVIE TITLE",
+        execute: function(option){
+            if(option){
+                myLog("Movie This: " + option);
+                myLog("");
+                getMovieData(convertToQuery({t: option}, "=", "&"));
+            } else {
+                myLog("Movie This: " + defaultMovie.t);
+                myLog("");
+                getMovieData(convertToQuery(defaultMovie, "=", "&"));
+            }
         }
     },
-    "do-what-it-says" : function(option){
-        if(option){
-            myLog("Doing what '" + option + "' says");
-        } else {
-            myLog("Doing what '" + defaultInstructionsFile.name + "' says");
+    "do-what-it-says" : {
+        optionDesc : "FILE NAME",
+        execute: function(option){
+            if(option){
+                myLog("Doing what '" + option + "' says");
+            } else {
+                myLog("Doing what '" + defaultInstructionsFile.name + "' says");
+            }
         }
-    }
+    },
 }
 
 function printAvailableCommands(){
     myLog("");
     myLog("AVAILABLE COMMANDS ARE:");
     for(command in commands){
-        myLog(command + " [option]");
+        myLog(command + " [" + commands[command].optionDesc + "]");
     }
 }
 
@@ -184,7 +207,7 @@ function executeCommand(args){
             }
         }
         if(commands.hasOwnProperty(command)){
-            commands[command](option);
+            commands[command].execute(option);
         } else {
             myLog("INVALID COMMAND: " + command);
             printAvailableCommands();
@@ -211,4 +234,6 @@ function runApp(){
     });
 }
 
+
+//:D
 runApp();
