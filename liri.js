@@ -22,7 +22,7 @@ var defaultInstructionsFile = {
 //misc variables
 var logFile = "log.txt";
 
-//logger
+//logger (console logs and logs to file)
 function myLog(message){
     console.log(message);
     var myDate = new Date();
@@ -30,6 +30,7 @@ function myLog(message){
     fs.appendFileSync(logFile, message);
 }
 
+//gets 20 most recent tweets from the dummy "Jason Bourne" account
 function getTweets(){
     var client = new Twitter(keysFile.twitterKeys);
     var path = "search/tweets";
@@ -38,6 +39,8 @@ function getTweets(){
         count: 20,
     };
     client.get(path, params, function(error, tweets, response){
+        myLog("Recent Tweets:");
+        myLog("");
         if(error){
             myLog(error);
         } else {
@@ -51,6 +54,7 @@ function getTweets(){
     });
 }
 
+//builds a search object ot be used to spotify a song (get information about it)
 function buildSpotifySearchObj(myType, myQuery, myLimit){
     var myObj = new Object();
     myObj.type = myType;
@@ -59,6 +63,9 @@ function buildSpotifySearchObj(myType, myQuery, myLimit){
     return myObj;
 }
 
+//convert some data to a query. Takes an object as first argument and iterates through its key/value pairs.
+//separates the key from the value in the query string with the d1 arg.
+//separates the key/value pair from another key/value pair in the query string with the d2 arg
 function convertToQuery(searchObj, d1, d2){
     var q = "";
     var keys = Object.keys(searchObj);
@@ -73,12 +80,16 @@ function convertToQuery(searchObj, d1, d2){
     return q;
 }
 
-function spotifySong(searchObj){
+//use the spotify node module to run a search against the spotify api
+//takes in a search obj with parameters for search. song name is used for logging only
+function spotifySong(searchObj, songName){
     var spotify = new Spotify(keysFile.spotifyKeys);
     spotify.search(searchObj, function(error, data) {
+        myLog("Spotify This Song: " + songName);
+        myLog("");
         if (error) {
-            myLog(error);
-        } else {
+            myLog(error);//log error
+        } else {//everything is fine
             var tracks = data.tracks;
             var items = tracks.items;
             var artists;
@@ -86,7 +97,7 @@ function spotifySong(searchObj){
             for(var i = 0; i < items.length; i++){
                 myLog("Track: " + items[i].name);
                 artistsStr = "Artists: ";
-                artists = items[i].artists;
+                artists = items[i].artists;//artists is stored in an array
                 for(var j = 0; j < artists.length; j++){
                     if(j < (artists.length-1)){
                         artistsStr = artistsStr + artists[j].name + ", ";
@@ -103,15 +114,19 @@ function spotifySong(searchObj){
     });
 }
 
-function getMovieData(queryPart){   
+//use the OMDB API to get movie information (depends on if the api key is still valid)
+//takes in part of a query string to search (uses http to get info). movie name is used for logging only
+function getMovieData(queryPart, movieName){   
     var queryUrl = "http://www.omdbapi.com/?" + queryPart + "&plot=short&apikey=40e9cece";
     request(queryUrl, function(err, response, body){
+        myLog("Movie This: " + movieName);
+        myLog("");
         if(!err && response.statusCode === 200){
             var jsonObj = JSON.parse(body);
             myLog("Title: " + jsonObj.Title);
             myLog("Year: " + jsonObj.Year);
             myLog("IMDB Rating: " + jsonObj.imdbRating);
-            for(var i = 0; i < jsonObj.Ratings.length; i++){
+            for(var i = 0; i < jsonObj.Ratings.length; i++){//Rotten Tomatoes rating is stored in an array of ratings. Why is IMDB separate?
                 var source = jsonObj.Ratings[i].Source.toLowerCase().trim();
                 if(source === "rotten tomatoes"){
                     myLog("Rotten Tomatoes Rating: " + jsonObj.Ratings[i].Value);
@@ -131,13 +146,47 @@ function getMovieData(queryPart){
     });
 }
 
+//reads a file to perform app commands.
+//file format should have one command per line. option for the command on each line is separated from the command by a comma
+//E.G.
+/*
+    <command>,<option>
+    <command>,<option>
+    <command>
+    <command>
+    <command>,<option>
+*/
+function readInstrFile(fname){
+    fs.readFile(fname, "utf8", function(err, data){
+        myLog("Doing what '" + fname + "' says");
+        myLog("");
+        if(err){
+            myLog(err);   
+        } else {
+            var arrayOfLines = data.split(endOfLine);
+            for(var i = 0; i < arrayOfLines.length; i++){
+                arrayOfLines[i] = arrayOfLines[i].split(",");
+                if(commands.hasOwnProperty(arrayOfLines[i][0])){
+                    if(arrayOfLines[i].length > 1){
+                        commands[arrayOfLines[i][0]].execute(arrayOfLines[i][1]);
+                    } else {
+                        commands[arrayOfLines[i][0]].execute("");
+                    }
+                } else {//will go onto the next line if there is an error. will tell you there was an invalid command
+                    myLog("INVALID COMMAND '" + arrayOfLines[i][0] + "' FOUND IN '" + fname + "'");
+                    printAvailableCommands();
+                }
+            }
+        }
+    });
+}
+
 //object of available commands
+//key is the command name. value is an object with a description of the option and the execute() function
 var commands = {
     "my-tweets" : {
         optionDesc : "NO OPTION",
         execute: function(option){
-            myLog("Recent Tweets:");
-            myLog("");
             getTweets();
         }
     },
@@ -145,13 +194,9 @@ var commands = {
         optionDesc : "TRACK NAME",
         execute: function(option){
             if(option){
-                myLog("Spotify This Song: " + option);
-                myLog("");
-                spotifySong(buildSpotifySearchObj("track", convertToQuery({track: option}, ":", " "), 10));
+                spotifySong(buildSpotifySearchObj("track", convertToQuery({track: option}, ":", " "), 10), option);
             } else {
-                myLog("Spotify This Song: " + defaultSpotify.track);
-                myLog("");
-                spotifySong(buildSpotifySearchObj("track", convertToQuery(defaultSpotify, ":", " "), 1));
+                spotifySong(buildSpotifySearchObj("track", convertToQuery(defaultSpotify, ":", " "), 1), defaultSpotify.track);
             }
         },
     },
@@ -159,13 +204,9 @@ var commands = {
         optionDesc: "MOVIE TITLE",
         execute: function(option){
             if(option){
-                myLog("Movie This: " + option);
-                myLog("");
-                getMovieData(convertToQuery({t: option}, "=", "&"));
+                getMovieData(convertToQuery({t: option}, "=", "&"), option);
             } else {
-                myLog("Movie This: " + defaultMovie.t);
-                myLog("");
-                getMovieData(convertToQuery(defaultMovie, "=", "&"));
+                getMovieData(convertToQuery(defaultMovie, "=", "&"), defaultMovie.t);
             }
         }
     },
@@ -173,14 +214,15 @@ var commands = {
         optionDesc : "FILE NAME",
         execute: function(option){
             if(option){
-                myLog("Doing what '" + option + "' says");
+                readInstrFile(option);
             } else {
-                myLog("Doing what '" + defaultInstructionsFile.name + "' says");
+                readInstrFile(defaultInstructionsFile.name);
             }
         }
     },
 }
 
+//prints all commands found in the commands object
 function printAvailableCommands(){
     myLog("");
     myLog("AVAILABLE COMMANDS ARE:");
@@ -189,6 +231,7 @@ function printAvailableCommands(){
     }
 }
 
+//executes command specified by the user's command-line argument.
 function executeCommand(args){
     if(args.length > 2){
         var command = args[2];
@@ -214,6 +257,7 @@ function executeCommand(args){
     }
 }
 
+//reads the package.json file for version name and runs the app by calling the executeCommand function for the command line args specified by the user
 function runApp(){
     myLog("");
     myLog("APP STARTED");
