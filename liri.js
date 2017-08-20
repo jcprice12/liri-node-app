@@ -26,7 +26,7 @@ var logFile = "log.txt";
 function myLog(message){
     console.log(message);
     var myDate = new Date();
-    message = myDate.toDateString() + "\t" + message;
+    message = myDate.toDateString() + " " + myDate.toTimeString() + ": " + message;
     fs.appendFile(logFile, message + endOfLine, function(err){
         if(err){
             console.log("Error writing ro log file " + err);
